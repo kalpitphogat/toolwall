@@ -34,18 +34,25 @@ def purge_leaks(by_split: dict[str, list[Record]], threshold: float = 0.8) -> di
     Order of precedence: test and every ood_* split are untouchable; val is purged against
     them; train is purged against val + test + ood. Returns how many records each split lost.
     """
-    held_out = [r.text for name, rs in by_split.items() if name == "test" or name.startswith("ood") for r in rs]
+    held = [r for name, rs in by_split.items() if name == "test" or name.startswith("ood") for r in rs]
     removed: dict[str, int] = {}
 
-    if "val" in by_split:
-        bad = leaking_indices([r.text for r in by_split["val"]], held_out, threshold)
-        by_split["val"] = [r for i, r in enumerate(by_split["val"]) if i not in bad]
-        removed["val"] = len(bad)
+    def purge(name: str, reference: list[Record]) -> None:
+        rs = by_split[name]
+        # whole-text copies
+        bad = leaking_indices([r.text for r in rs], [r.text for r in reference], threshold)
+        # payload copies: the same attack pasted into a different carrier, or resubmitted by another
+        # attacker team, is invisible to whole-text similarity, so compare the inserted text itself
+        with_insert = [i for i, r in enumerate(rs) if r.meta.get("insert")]
+        ref_payloads = [r.meta.get("insert") or r.text for r in reference]
+        hits = leaking_indices([rs[i].meta["insert"] for i in with_insert], ref_payloads, threshold)
+        bad |= {with_insert[j] for j in hits}
+        by_split[name] = [r for i, r in enumerate(rs) if i not in bad]
+        removed[name] = len(bad)
 
-    reference = held_out + [r.text for r in by_split.get("val", [])]
-    bad = leaking_indices([r.text for r in by_split["train"]], reference, threshold)
-    by_split["train"] = [r for i, r in enumerate(by_split["train"]) if i not in bad]
-    removed["train"] = len(bad)
+    if "val" in by_split:
+        purge("val", held)
+    purge("train", held + by_split.get("val", []))
     return removed
 
 

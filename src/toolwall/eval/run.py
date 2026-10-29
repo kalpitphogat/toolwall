@@ -20,6 +20,19 @@ from .metrics import summary
 
 DEFAULT_SPLITS = ("test", "ood_safeguard", "ood_jailbreak")
 
+# Public checkpoints and the record sources they were trained on (from their model cards).
+# Records from those sources are removed before scoring that checkpoint, so no comparison
+# rewards a model for having memorised the evaluation data.
+KNOWN_TRAINING_SOURCES = {
+    "fmops/distilbert-prompt-injection": {"deepset"},
+    "deepset/deberta-v3-base-injection": {"deepset"},
+    "protectai/deberta-v3-base-prompt-injection-v2": {"jailbreak_cls"},
+}
+
+
+def _base_source(r) -> str:
+    return r.source.split("/")[-1]          # "synth/deepset" -> "deepset"
+
 
 def _latency(scorer, texts, n=200):
     lat = []
@@ -31,16 +44,21 @@ def _latency(scorer, texts, n=200):
     return {"single_doc_ms_p50": statistics.median(lat), "single_doc_ms_p95": lat[int(0.95 * (len(lat) - 1))], "n": len(lat)}
 
 
-def evaluate(scorer, data_dir: Path, splits, threshold: float) -> dict:
-    res = {"scorer": scorer.name, "threshold": threshold, "splits": {}}
+def evaluate(scorer, data_dir: Path, splits, threshold: float, exclude_sources: set[str] = frozenset()) -> dict:
+    res = {"scorer": scorer.name, "threshold": threshold, "splits": {}, "excluded_sources": sorted(exclude_sources)}
     for split in splits:
         path = data_dir / f"{split}.jsonl"
         if not path.exists():
             continue
-        recs = list(read_jsonl(path))
+        all_recs = list(read_jsonl(path))
+        recs = [r for r in all_recs if _base_source(r) not in exclude_sources]
+        if not recs or len({r.label for r in recs}) < 2:
+            res["splits"][split] = {"skipped": "all items come from this model's training data"}
+            continue
         scores = [s.score for s in scorer.scan_many([r.text for r in recs])]
         labels = [r.label for r in recs]
         entry = summary(labels, scores, threshold)
+        entry["excluded_as_training_data"] = len(all_recs) - len(recs)
         # breakdown by kind: benign docs are paired with each injected kind so every slice has both classes
         by_kind = defaultdict(list)
         for r, s in zip(recs, scores):
@@ -70,10 +88,16 @@ def report_markdown(results: list[dict]) -> str:
             e = r["splits"].get(split)
             if not e:
                 continue
+            if "skipped" in e:
+                lines.append(f"| {r['scorer']} | — | not evaluated: {e['skipped']} | | | | | | |")
+                continue
             op = e["at_operating_threshold"]
-            lines.append(f"| {r['scorer']} | {e['n']} | {e['roc_auc']:.3f} | {e['pr_auc']:.3f} | {e['tpr_at_1pct_fpr']:.3f} | "
+            mark = "†" if e.get("excluded_as_training_data") else ""
+            lines.append(f"| {r['scorer']}{mark} | {e['n']} | {e['roc_auc']:.3f} | {e['pr_auc']:.3f} | {e['tpr_at_1pct_fpr']:.3f} | "
                          f"{e['tpr_at_5pct_fpr']:.3f} | {r['threshold']:.3g} | {op['recall']:.3f} | {op['fpr']:.3f} |")
         lines.append("")
+    lines += ["† items from this model's own training data were removed before scoring it "
+              "(see `excluded_as_training_data` in its JSON).", ""]
     lines += ["## Latency (single document, sequential)", "", "| scorer | p50 ms | p95 ms |", "|---|---|---|"]
     for r in results:
         if "latency" in r:
@@ -99,14 +123,15 @@ def main(argv=None):
     jobs = []
     for m in args.model:
         sc = TransformerScorer(m)
-        jobs.append((sc, sc.thresholds.get("fpr_0.01", 0.5)))
+        jobs.append((sc, sc.thresholds.get("fpr_0.01", 0.5), set()))
     for spec in args.external:
         model_id, _, label = spec.rpartition(":")
-        jobs.append((TransformerScorer(model_id, positive_label=label, name=model_id.replace("/", "__")), 0.5))
+        jobs.append((TransformerScorer(model_id, positive_label=label, name=model_id.replace("/", "__")), 0.5,
+                     KNOWN_TRAINING_SOURCES.get(model_id, set())))
     if args.keyword:
-        jobs.append((KeywordScorer(), 0.5))
-    for scorer, thr in jobs:
-        r = evaluate(scorer, data_dir, splits, thr)
+        jobs.append((KeywordScorer(), 0.5, set()))
+    for scorer, thr, excl in jobs:
+        r = evaluate(scorer, data_dir, splits, thr, excl)
         (out / f"eval_{scorer.name}.json").write_text(json.dumps(r, indent=2), encoding="utf-8")
         results.append(r)
         print(json.dumps({k: v for k, v in r.items() if k != "splits"}), flush=True)
