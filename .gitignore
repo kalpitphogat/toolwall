@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+dist/
+build/
+
+# Built datasets are derived from third-party corpora (some CC BY-SA); rebuild with `toolwall data build`.
+data/processed/
+data/cache/
+
+# Model weights are large; see README for how to train or download them.
+models/
+
+*.db
+*.db-wal
+*.db-shm
+.env

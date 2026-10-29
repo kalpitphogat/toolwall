@@ -1,0 +1,22 @@
+# Example configuration for `toolwall gateway` and `toolwall serve`.
+
+scorer:
+  type: transformer
+  model_dir: models/toolwall-deberta-v3-small     # produced by `toolwall train`
+  # device: cpu                                    # default: cuda if available
+
+policy:
+  mode: enforce             # enforce | monitor (monitor logs verdicts but never changes tool output)
+  warn_threshold: fpr_0.05  # fence output as untrusted data above the threshold fitted for 5% FPR on validation
+  block_threshold: fpr_0.01 # withhold output above the threshold fitted for 1% FPR
+
+audit_db: toolwall_audit.db
+store_excerpts: true
+
+upstreams:
+  - name: demo
+    command: python
+    args: [examples/demo_server.py]
+  # - name: files
+  #   command: npx
+  #   args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"]
