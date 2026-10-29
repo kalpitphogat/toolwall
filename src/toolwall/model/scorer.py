@@ -50,7 +50,8 @@ class TransformerScorer:
         self.torch = torch
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
-        self.model = AutoModelForSequenceClassification.from_pretrained(model_dir).to(self.device).eval()
+        # explicit fp32: transformers >= 5 would otherwise load fp16 weights, which are slow or unsupported on CPU
+        self.model = AutoModelForSequenceClassification.from_pretrained(model_dir, dtype=torch.float32).to(self.device).eval()
         self.batch_size, self.max_length, self.stride = batch_size, max_length, stride
         self.name = name or Path(model_dir).name
 
@@ -87,10 +88,11 @@ class TransformerScorer:
                 width = max(len(chunks[i].input_ids) for i in idx)
                 ids = [chunks[i].input_ids + [pad] * (width - len(chunks[i].input_ids)) for i in idx]
                 mask = [chunks[i].attention_mask + [0] * (width - len(chunks[i].attention_mask)) for i in idx]
-                logits = self.model(
-                    input_ids=self.torch.tensor(ids, device=self.device),
-                    attention_mask=self.torch.tensor(mask, device=self.device),
-                ).logits.float()
+                with self.torch.autocast(device_type="cuda", dtype=self.torch.bfloat16, enabled=self.device.startswith("cuda")):
+                    logits = self.model(
+                        input_ids=self.torch.tensor(ids, device=self.device),
+                        attention_mask=self.torch.tensor(mask, device=self.device),
+                    ).logits.float()
                 neg = 1 - self.pos if logits.shape[-1] == 2 else None
                 m = logits[:, self.pos] - (logits[:, neg] if neg is not None else 0)
                 margins[idx] = m.cpu().numpy()

@@ -136,8 +136,11 @@ def main(argv=None):
     emit(event="data", train_docs=len(train), train_windows=len(items), positive_windows=n_pos,
          dropped_unlabelable_windows=dropped, val_docs=len(val))
 
+    # fp32 master weights: transformers >= 5 loads checkpoints in their stored dtype (fp16 for DeBERTa-v3),
+    # and AdamW on fp16 weights diverges to NaN after the first step (eps underflows). bf16 autocast gives the speed.
     model = AutoModelForSequenceClassification.from_pretrained(
-        args.base_model, num_labels=2, id2label={0: "BENIGN", 1: "INJECTION"}, label2id={"BENIGN": 0, "INJECTION": 1}
+        args.base_model, num_labels=2, id2label={0: "BENIGN", 1: "INJECTION"}, label2id={"BENIGN": 0, "INJECTION": 1},
+        dtype=torch.float32,
     ).to(device)
     model.train()
 
@@ -174,6 +177,8 @@ def main(argv=None):
             with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=bf16):
                 logits = model(input_ids=ids_t, attention_mask=mask_t).logits
             loss = loss_fn(logits.float(), y_t) / args.grad_accum
+            if not torch.isfinite(loss):
+                raise RuntimeError(f"non-finite loss at step {step}; refusing to continue")
             loss.backward()
             running += loss.item()
             micro += 1
@@ -207,7 +212,7 @@ def main(argv=None):
             done = True
 
     # calibration on validation with the best checkpoint
-    model = AutoModelForSequenceClassification.from_pretrained(out).to(device)
+    model = AutoModelForSequenceClassification.from_pretrained(out, dtype=torch.float32).to(device)
     m = doc_margins(model, tok, val_texts, device, args.max_length, args.stride)
     temperature = fit_temperature(m, val_y)
     probs = sigmoid(m / temperature)

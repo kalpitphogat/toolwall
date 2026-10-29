@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-model = ["torch>=2.4", "transformers>=4.46", "sentencepiece>=0.2", "protobuf>=4.25"]
+model = ["torch>=2.4", "transformers>=4.56", "sentencepiece>=0.2", "protobuf>=4.25"]
 data = ["datasets>=3.0"]
 dev = ["pytest>=8.0", "httpx>=0.27", "scikit-learn>=1.5"]
 
