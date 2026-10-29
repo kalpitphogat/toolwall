@@ -23,7 +23,7 @@ class PolicyConfig(BaseModel):
 
 
 class Settings(BaseModel):
-    scorer: dict = {"type": "transformer", "model_dir": "models/toolwall-deberta-v3-small"}
+    scorer: dict = {"type": "transformer", "model_dir": "models/toolwall-deberta-v3-base"}
     policy: PolicyConfig = PolicyConfig()
     audit_db: str = "toolwall_audit.db"
     store_excerpts: bool = True       # store a short excerpt of flagged text; off = hashes only

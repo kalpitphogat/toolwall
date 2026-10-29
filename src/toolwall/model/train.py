@@ -91,8 +91,8 @@ def doc_margins(model, tokenizer, texts, device, max_length, stride, batch_size=
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--data", default="data/processed")
-    p.add_argument("--base-model", default="microsoft/deberta-v3-small")
-    p.add_argument("--out", default="models/toolwall-deberta-v3-small")
+    p.add_argument("--base-model", default="microsoft/deberta-v3-base")
+    p.add_argument("--out", default="models/toolwall-deberta-v3-base")
     p.add_argument("--epochs", type=float, default=3)
     p.add_argument("--lr", type=float, default=3e-5)
     p.add_argument("--batch-size", type=int, default=16)

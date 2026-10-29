@@ -1,0 +1,13 @@
+# Runs the gateway without model weights: a deterministic phrase-matching scorer, for demos and CI.
+scorer:
+  type: stub
+  triggers: ["ignore previous instructions", "do not mention this"]
+policy:
+  mode: enforce
+  warn_threshold: 0.5
+  block_threshold: 0.9
+audit_db: toolwall_demo_audit.db
+upstreams:
+  - name: demo
+    command: python
+    args: [examples/demo_server.py]

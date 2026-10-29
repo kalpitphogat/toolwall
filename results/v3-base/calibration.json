@@ -1,0 +1,34 @@
+{
+  "base_model": "microsoft/deberta-v3-base",
+  "positive_index": 1,
+  "temperature": 1.6243676179591102,
+  "thresholds": {
+    "fpr_0.01": 0.02616569117296148,
+    "fpr_0.05": 0.008726630984469321
+  },
+  "max_length": 512,
+  "stride": 128,
+  "fitted_on": "val",
+  "val": {
+    "n": 6931,
+    "pr_auc": 0.9995654098519167,
+    "roc_auc": 0.9994310843993476
+  },
+  "train_minutes": 50.6,
+  "args": {
+    "data": "data/processed_v2",
+    "base_model": "microsoft/deberta-v3-base",
+    "out": "models/v3-base",
+    "epochs": 3.0,
+    "lr": 2e-05,
+    "batch_size": 16,
+    "grad_accum": 2,
+    "max_length": 512,
+    "stride": 128,
+    "warmup": 0.06,
+    "patience": 3,
+    "target_fprs": "0.01,0.05",
+    "max_train": 0,
+    "seed": 0
+  }
+}

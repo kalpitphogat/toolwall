@@ -2,7 +2,7 @@
 
 scorer:
   type: transformer
-  model_dir: models/toolwall-deberta-v3-small     # produced by `toolwall train`
+  model_dir: models/toolwall-deberta-v3-base     # produced by `toolwall train`
   # device: cpu                                    # default: cuda if available
 
 policy:
