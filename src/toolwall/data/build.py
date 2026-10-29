@@ -14,6 +14,7 @@ Steps
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 from collections import defaultdict
@@ -22,7 +23,7 @@ from pathlib import Path
 
 from . import sources
 from .dedup import cluster_ids, leaking_indices
-from .schema import BENIGN_DOC, DIRECT, INDIRECT_SYNTH, Record, write_jsonl
+from .schema import BENIGN_DOC, DIRECT, INDIRECT_SYNTH, Record, normalize, write_jsonl
 from .split import SPLITS, assign_splits, audit, purge_leaks, summarize
 from .synth import compose
 
@@ -42,12 +43,17 @@ class BuildConfig:
 def _cluster_and_split(records: list[Record], cfg: BuildConfig) -> list[Record]:
     ids = cluster_ids([r.text for r in records], threshold=cfg.near_dup_threshold)
     labels: dict[int, set[int]] = defaultdict(set)
+    members: dict[int, list[str]] = defaultdict(list)
     for cid, r in zip(ids, records):
         labels[cid].add(r.label)
+        members[cid].append(normalize(r.text))
+    # Content-based group ids: a cluster is named after its smallest member, so adding a new
+    # source in a later build does not move existing items between train and test.
+    name = {cid: "c" + hashlib.blake2b(min(m).encode(), digest_size=8).hexdigest() for cid, m in members.items()}
     kept = []
     for cid, r in zip(ids, records):
         if len(labels[cid]) == 1:            # drop clusters with conflicting labels
-            r.group = f"c{cid}"
+            r.group = name[cid]
             kept.append(r)
     # one representative per cluster: near-copies add no information, only leakage risk
     seen: set[str] = set()

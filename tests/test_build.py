@@ -77,3 +77,14 @@ def test_build_end_to_end(tmp_path, monkeypatch):
     emails = [r for r in train if r.text.startswith("From: ")]
     assert {0, 1} <= {r.label for r in emails}
     assert json.loads((tmp_path / "manifest.json").read_text())["splits"]["train"]["n"] == len(train)
+
+
+def test_adding_a_source_does_not_move_existing_items_between_splits():
+    cfg = build_mod.BuildConfig()
+    base = build_mod._cluster_and_split(_payloads(200) + _benign(200), cfg)
+    before = {r.text: r.split for r in base}
+    extra = [Record(f"Act as a friendly travel guide for city number {i} and suggest {i % 7} museums.", 0, "new", "")
+             for i in range(150)]
+    after = {r.text: r.split for r in build_mod._cluster_and_split(_payloads(200) + _benign(200) + extra, cfg)}
+    moved = [t for t, s in before.items() if t in after and after[t] != s]
+    assert not moved, f"{len(moved)} items changed split"

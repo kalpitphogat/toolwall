@@ -7,6 +7,8 @@
 | deepset        | deepset/prompt-injections               | Apache-2.0   | payloads + benign prompts                |
 | spml           | reshabhs/SPML_Chatbot_Prompt_Injection  | MIT          | payloads + benign prompts                |
 | dolly          | databricks/databricks-dolly-15k         | CC BY-SA 3.0 | benign inserts (instructions) + carriers |
+| spml_system    | reshabhs/SPML_Chatbot_Prompt_Injection  | MIT          | benign system/persona prompts (v2)       |
+| orca           | Open-Orca/OpenOrca                      | MIT          | benign templated task prompts (v2)       |
 | cnn            | abisee/cnn_dailymail (3.0.0)            | Apache-2.0   | carriers                                 |
 | ood_safeguard  | xTRam1/safe-guard-prompt-injection test | (none given) | held-out evaluation only                 |
 | ood_jailbreak  | jackhhao/jailbreak-classification test  | Apache-2.0   | held-out evaluation only                 |
@@ -100,7 +102,38 @@ def load_benign_prompts(dolly_cap: int = 8_000, seed: int = 0) -> list[Record]:
     dolly = [r for r in _ds("databricks/databricks-dolly-15k", "train") if _clean(r["instruction"])]
     random.Random(seed).shuffle(dolly)
     out += [Record(_clean(r["instruction"]), 0, "dolly", "", meta={"category": r["category"]}) for r in dolly[:dolly_cap]]
+    out += load_benign_instructions_to_ai(seed=seed)
     return [r for r in out if r.text]
+
+
+def load_benign_instructions_to_ai(orca_cap: int = 10_000, max_chars: int = 1_500, seed: int = 0) -> list[Record]:
+    """Benign text that *is* addressed to an AI: system/persona prompts and templated task prompts.
+
+    Added in v2 after v1's error analysis: most of v1's held-out false positives were benign
+    instructions to a model ("I want you to act as a travel guide", FLAN-style "Premise: ...
+    Hypothesis: ..." tasks), a kind of text v1 had barely seen with a benign label. Without it
+    the classifier learns "addressed to the AI => injection", which is wrong: what makes an
+    injection is an instruction that hijacks the agent's task, not one that addresses it.
+    """
+    out: list[Record] = []
+    seen: set[str] = set()
+    for r in _ds("reshabhs/SPML_Chatbot_Prompt_Injection", "train"):
+        sp = _clean(r["System Prompt"])
+        if sp and sp not in seen:
+            seen.add(sp)
+            out.append(Record(sp, 0, "spml_system", ""))
+    stream = _ds("Open-Orca/OpenOrca", "train", streaming=True)
+    orca, systems = [], set()
+    for r in itertools.islice(stream, orca_cap * 3):
+        q = _clean(r["question"])
+        if q and len(q) <= max_chars:
+            orca.append(q)
+        if _clean(r["system_prompt"]):
+            systems.add(_clean(r["system_prompt"]))
+    random.Random(seed).shuffle(orca)
+    out += [Record(q, 0, "orca", "") for q in orca[:orca_cap]]
+    out += [Record(s, 0, "orca_system", "") for s in sorted(systems)]
+    return out
 
 
 # ---------------------------------------------------------------- carriers

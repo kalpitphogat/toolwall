@@ -1,0 +1,135 @@
+{
+  "config": {
+    "out_dir": "data/processed",
+    "seed": 0,
+    "near_dup_threshold": 0.8,
+    "synth_per_split": {
+      "train": 20000,
+      "val": 2500,
+      "test": 2500
+    },
+    "direct_cap_per_label": {
+      "train": 6000,
+      "val": 800,
+      "test": 800
+    },
+    "empty_negative_fraction": 0.3,
+    "llmail_per_team_cap": 200,
+    "llmail_total_cap": 10000
+  },
+  "splits": {
+    "train": {
+      "n": 45658,
+      "positives": 22825,
+      "by_kind": {
+        "benign_doc": 16833,
+        "direct": 12000,
+        "indirect_synth": 9984,
+        "indirect_real": 6841
+      },
+      "by_source": {
+        "synth/dolly": 8021,
+        "gandalf": 442,
+        "dolly": 4063,
+        "synth/spml": 8705,
+        "synth/dolly_ctx": 2141,
+        "spml": 7176,
+        "llmail": 6841,
+        "synth/llmail": 4132,
+        "synth/cnn": 2872,
+        "deepset": 319,
+        "synth/gandalf": 424,
+        "synth/deepset": 522
+      }
+    },
+    "val": {
+      "n": 6928,
+      "positives": 3466,
+      "by_kind": {
+        "direct": 1600,
+        "benign_doc": 2662,
+        "indirect_real": 1416,
+        "indirect_synth": 1250
+      },
+      "by_source": {
+        "spml": 958,
+        "synth/spml": 1254,
+        "synth/dolly": 1285,
+        "llmail": 1416,
+        "synth/dolly_ctx": 305,
+        "dolly": 556,
+        "synth/llmail": 487,
+        "synth/gandalf": 42,
+        "synth/cnn": 465,
+        "gandalf": 59,
+        "synth/deepset": 74,
+        "deepset": 27
+      }
+    },
+    "test": {
+      "n": 7534,
+      "positives": 3767,
+      "by_kind": {
+        "benign_doc": 2967,
+        "direct": 1600,
+        "indirect_real": 1717,
+        "indirect_synth": 1250
+      },
+      "by_source": {
+        "synth/spml": 1209,
+        "dolly": 538,
+        "llmail": 1717,
+        "spml": 962,
+        "synth/dolly": 1418,
+        "synth/llmail": 569,
+        "synth/cnn": 495,
+        "synth/gandalf": 48,
+        "synth/dolly_ctx": 390,
+        "synth/deepset": 88,
+        "deepset": 39,
+        "gandalf": 61
+      }
+    },
+    "ood_safeguard": {
+      "n": 2060,
+      "positives": 650,
+      "by_kind": {
+        "direct": 2060
+      },
+      "by_source": {
+        "safeguard": 2060
+      }
+    },
+    "ood_jailbreak": {
+      "n": 262,
+      "positives": 139,
+      "by_kind": {
+        "direct": 262
+      },
+      "by_source": {
+        "jailbreak_cls": 262
+      }
+    }
+  },
+  "dropped_before_synthesis_as_near_duplicates_of_ood": {
+    "prompts": 21,
+    "llmail": 2
+  },
+  "purged_as_near_duplicates_of_heldout": {
+    "val": 6,
+    "train": 70
+  },
+  "leak_audit": {
+    "threshold": 0.8,
+    "val_items_with_train_near_duplicate": 0,
+    "test_items_with_train_near_duplicate": 0,
+    "ood_safeguard_items_with_train_near_duplicate": 0,
+    "ood_jailbreak_items_with_train_near_duplicate": 0,
+    "val_inserts_with_train_near_duplicate": 0,
+    "test_inserts_with_train_near_duplicate": 0,
+    "ood_safeguard_inserts_with_train_near_duplicate": 0,
+    "ood_jailbreak_inserts_with_train_near_duplicate": 0,
+    "val_groups_shared_with_train": 0,
+    "test_groups_shared_with_train": 0
+  }
+}

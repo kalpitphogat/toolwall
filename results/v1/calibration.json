@@ -1,0 +1,34 @@
+{
+  "base_model": "microsoft/deberta-v3-small",
+  "positive_index": 1,
+  "temperature": 1.3980548910969117,
+  "thresholds": {
+    "fpr_0.01": 0.03606103037899349,
+    "fpr_0.05": 0.006720962601550179
+  },
+  "max_length": 512,
+  "stride": 128,
+  "fitted_on": "val",
+  "val": {
+    "n": 6928,
+    "pr_auc": 0.9991181032494325,
+    "roc_auc": 0.9990686117147578
+  },
+  "train_minutes": 45.3,
+  "args": {
+    "data": "data/processed",
+    "base_model": "microsoft/deberta-v3-small",
+    "out": "models/toolwall-deberta-v3-small",
+    "epochs": 3.0,
+    "lr": 3e-05,
+    "batch_size": 8,
+    "grad_accum": 4,
+    "max_length": 512,
+    "stride": 128,
+    "warmup": 0.06,
+    "patience": 3,
+    "target_fprs": "0.01,0.05",
+    "max_train": 0,
+    "seed": 0
+  }
+}
